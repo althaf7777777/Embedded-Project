@@ -1,0 +1,41 @@
+#include<LPC21xx.h>
+#include"types.h"
+#include"delay.h"
+#include"can_defines.h"
+#include"can.h"
+void init_CAN1()
+{
+ PINSEL1=((PINSEL1&~(3<<((24%16)*2)))|(1<<((24%16)*2)));
+ PINSEL1=((PINSEL1&~(3<<((25%16)*2)))|(1<<((25%16)*2)));
+ C1MOD|=1<<RM_BIT;
+ AFMR&=~(1<<AccOFF_BIT);
+ AFMR|=(1<<AccBP_BIT);
+ C1BTR=BTR_LVAL;
+ C1MOD&=~(1<<RM_BIT);
+}
+void CAN1_tx(CANF txf)
+{
+ while(((C1GSR>>TBS1_BIT)&1)==0);
+ C1TID1=txf.ID;
+    C1TFI1=(txf.bfv.RTR<<RTR_BIT)|(txf.bfv.DLC<<DLC_BIT);
+ if(txf.bfv.RTR!=1)
+ {
+  C1TDA1=txf.data1;
+  C1TDB1=txf.data2;
+ }
+ C1CMR=((1<<STB1_BIT)|(1<<TR_BIT));
+ while(((C1GSR>>TCS1_BIT)&1)==0);
+}
+void CAN1_rx(CANF *rxf)
+{
+ while(((C1GSR>>RBS_BIT)&1)==0);
+ rxf->ID=C1RID&0x7ff;
+ rxf->bfv.RTR=((C1RFS>>RTR_BIT)&1);
+ rxf->bfv.DLC=((C1RFS>>DLC_BIT)&15);
+ if(rxf->bfv.RTR==0)
+ {
+  rxf->data1=C1RDA;
+  rxf->data2=C1RDB;
+ }
+ C1CMR|=(1<<RRB_BIT);
+}
